@@ -2,8 +2,15 @@
 
 
 module coulomb_counter #(
-    parameter DATA_WIDTH   = 16
-    parameter integer SAMPLE_PERIOD_S  = 10,   // seconds per sample (from data: ~10s)
+    parameter DATA_WIDTH   = 16,
+    // Sample rate of ADC in Hz
+    // Must match SAMPLE_RATE_HZ used in prepare_dataset.py
+    // Your data: time column shows ~10s between rows → 0.1Hz
+    // But XADC runs faster — set to your actual ADC polling rate
+    // For 1Hz: DT_NUMERATOR=1, DT_DENOMINATOR=3600
+    // For 10Hz: DT_NUMERATOR=1, DT_DENOMINATOR=36000
+    // For 0.1Hz (1 sample per 10 seconds): DT_NUMERATOR=10, DT_DENOMINATOR=3600
+    parameter integer SAMPLE_PERIOD_S  = 10,   // seconds per sample (from your data: ~10s)
     parameter integer SECONDS_PER_HOUR = 3600
 )(
     input  wire                        clk,
@@ -14,10 +21,17 @@ module coulomb_counter #(
     output reg  signed [DATA_WIDTH-1:0] ah_out         // Ah_used in Q8.8
 );
 
-    // dt/3600 in Q16.16;
+    // dt/3600 in Q16.16:
+    // dt = SAMPLE_PERIOD_S seconds
+    // dt/3600 = SAMPLE_PERIOD_S/3600
+    // In Q16.16: round(SAMPLE_PERIOD_S/3600 * 65536)
+    // For 10s: 10/3600 * 65536 = 182.04 → 182
     localparam signed [31:0] DT_AH_Q16 =
         $rtoi($itor(SAMPLE_PERIOD_S) / $itor(SECONDS_PER_HOUR) * 65536.0 + 0.5);
 
+    // Internal accumulator: Q16.16 gives enough range
+    // Max Ah_used in training data = 1774 Ah
+    // Q16.16 max = 32767.99 — covers up to 32767 Ah ✓
     reg signed [47:0] accumulator;
 
     // Previous current sample for trapezoidal rule
@@ -38,7 +52,7 @@ module coulomb_counter #(
                            (($signed({{32{i_prev[DATA_WIDTH-1]}}, i_prev}) +
                              $signed({{32{i_in[DATA_WIDTH-1]}},   i_in}))
                             * $signed(DT_AH_Q16) >>> 9);
-                            
+                            // >>>9 = >>>8 (Q8.8→Q16.16 correction) + >>>1 (÷2)
 
             i_prev <= i_in;
 

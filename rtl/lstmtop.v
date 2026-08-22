@@ -4,7 +4,7 @@
 module lstmtop #(
     parameter DATA_WIDTH  = 16,
     parameter NUM_NEURONS = 16,
-    parameter NUM_INPUTS  = 4      
+    parameter NUM_INPUTS  = 4      // updated: was 3
 )(
     input  wire                        clk,
     input  wire                        rst,
@@ -14,7 +14,7 @@ module lstmtop #(
     input  wire signed [DATA_WIDTH-1:0] v_in,
     input  wire signed [DATA_WIDTH-1:0] i_in,
     input  wire signed [DATA_WIDTH-1:0] t_in,
-    input  wire signed [DATA_WIDTH-1:0] ah_in,   
+    input  wire signed [DATA_WIDTH-1:0] ah_in,   // NEW: Ah_used
 
     output wire signed [DATA_WIDTH-1:0] soc_out,
     output wire                         soc_valid
@@ -22,6 +22,10 @@ module lstmtop #(
 
     // Pack 4 inputs into wide bus for macarray
     // Packing order must match macarray input indexing:
+    //   inp=0 → x_in[15:0]  = v_in
+    //   inp=1 → x_in[31:16] = i_in
+    //   inp=2 → x_in[47:32] = t_in
+    //   inp=3 → x_in[63:48] = ah_in
     wire [NUM_INPUTS*DATA_WIDTH-1:0] lstm_x_in;
     assign lstm_x_in = {ah_in, t_in, i_in, v_in};
 

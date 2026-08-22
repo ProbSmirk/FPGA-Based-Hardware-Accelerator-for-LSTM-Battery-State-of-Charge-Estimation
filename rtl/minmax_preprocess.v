@@ -2,7 +2,7 @@
 
 
 module minmax_preprocess #(
-
+   
     parameter signed [31:0] MM_SCALE_V  = 32'h00000000,  // replace with mm_scale[0]
     parameter signed [31:0] MM_SCALE_I  = 32'h00000000,  // replace with mm_scale[1]
     parameter signed [31:0] MM_SCALE_T  = 32'h00000000,  // replace with mm_scale[2]
@@ -44,6 +44,9 @@ module minmax_preprocess #(
         begin
             // x(Q8.8) * scale(Q16.16) = Q24.24 in 48-bit
             product = $signed({{32{x[15]}}, x}) * $signed(scale);
+            // Shift right 16 to get Q8.8 in lower 16 bits
+            // product[31:16] is the Q8.8 result of the multiply
+            // Add offset (Q16.16 → take [31:16] for Q8.8)
             result = (product >>> 16) + $signed(offset >>> 8);
             // result[15:0] is now Q8.8
             out = result[15:0];

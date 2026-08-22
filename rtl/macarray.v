@@ -28,6 +28,8 @@ module macarray #(
         $readmemh("lstm_W.txt", W_memory);
         $readmemh("lstm_U.txt", U_memory);
         $readmemh("lstm_b.txt", b_memory);
+        $display("MACARRAY CHECK: W_memory[16]=%h  b_memory[16]=%h", W_memory[16], b_memory[16]);
+
     end
 
     reg [1:0] gate_idx;      // Only 2 bits needed to store states 0, 1, 2, 3
@@ -100,10 +102,10 @@ module macarray #(
                 
                 // Set the correct 2-bit gate index to drive the DSP memory offsets safely
                 case (state)
-                    3'd1:    gate_idx <= 2'd1;  
-                    3'd2:    gate_idx <= 2'd0;  
-                    3'd3:    gate_idx <= 2'd2;  
-                    3'd4:    gate_idx <= 2'd3;  
+                    3'd1:    gate_idx <= 2'd1;  // 1 * 16 = 16
+                    3'd2:    gate_idx <= 2'd0;  // 0 * 16 = 0
+                    3'd3:    gate_idx <= 2'd2;  // 2 * 16 = 32
+                    3'd4:    gate_idx <= 2'd3;  // 3 * 16 = 48
                     default: gate_idx <= 2'd0;
                 endcase
             end
@@ -149,6 +151,7 @@ module macarray #(
                         mac_step <= STEP_REC0;
                     end
 
+                    // Steps 5..20: recurrent weights h[0]..h[15]
                     STEP_REC0,
                     5'd6, 5'd7, 5'd8, 5'd9, 5'd10,
                     5'd11, 5'd12, 5'd13, 5'd14, 5'd15,
@@ -166,24 +169,25 @@ module macarray #(
                     end
 
                     STEP_ACT: begin
+                        // Apply activation and store to gate output
                         mac_done    <= 1'b1;
                         mac_running <= 1'b0;
                         mac_step    <= 0;
 
                         case (state_reg)
-                            3'd1: begin  // FORGET_GATE-sigmoid
+                            3'd1: begin  // FORGET_GATE - sigmoid
                                 for (n = 0; n < NUM_NEURONS; n = n + 1)
                                     f_out[n*DATA_WIDTH +: DATA_WIDTH] <= hard_sigmoid(act_in[n]);
                             end
-                            3'd2: begin  //INPUT_GATE-sigmoid
+                            3'd2: begin  // INPUT_GATE - sigmoid
                                 for (n = 0; n < NUM_NEURONS; n = n + 1)
                                     i_out[n*DATA_WIDTH +: DATA_WIDTH] <= hard_sigmoid(act_in[n]);
                             end
-                            3'd3: begin  //CELL_CANDIDATE-tanh
+                            3'd3: begin  // CELL_CANDIDATE - tanh
                                 for (n = 0; n < NUM_NEURONS; n = n + 1)
                                     c_out[n*DATA_WIDTH +: DATA_WIDTH] <= hard_tanh(act_in[n]);
                             end
-                            3'd4: begin  //OUTPUT_GATE-sigmoid
+                            3'd4: begin  // OUTPUT_GATE - sigmoid
                                 for (n = 0; n < NUM_NEURONS; n = n + 1)
                                     o_out[n*DATA_WIDTH +: DATA_WIDTH] <= hard_sigmoid(act_in[n]);
                             end

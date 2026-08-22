@@ -49,6 +49,7 @@ module lstmlayer #(
         end
     endgenerate
 
+   
     wire signed [DATA_WIDTH-1:0] tanh_cell [0:NUM_NEURONS-1];
     genvar gi;
     generate
@@ -107,6 +108,8 @@ module lstmlayer #(
                     end
                 end
                 UPDATE_CELL: begin
+                    // c_t = f_t * c_{t-1} + i_t * c_tilde_t
+                    // All values Q8.8; multiply gives Q16.16, >>>8 gives Q8.8
                     for (i = 0; i < NUM_NEURONS; i = i + 1) begin
                         cell_state[i] <=
                             (($signed({{16{f_t[i][15]}},    f_t[i]})    * $signed({{16{cell_state[i][15]}}, cell_state[i]})) >>> 8) +
@@ -115,6 +118,7 @@ module lstmlayer #(
                     state <= UPDATE_H;
                 end
                 UPDATE_H: begin
+                    
                     for (i = 0; i < NUM_NEURONS; i = i + 1) begin
                         hidden_state[i] <=
                             (($signed({{16{o_t[i][15]}},      o_t[i]}))    * ($signed({{16{tanh_cell[i][15]}}, tanh_cell[i]}))) >>> 8;

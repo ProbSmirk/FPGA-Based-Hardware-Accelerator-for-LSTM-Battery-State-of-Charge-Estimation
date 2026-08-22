@@ -26,8 +26,6 @@ module denselayer #(
     end
 
     reg [1:0] state;
-
-   
     wire signed [47:0] next_accumulator;
     
     assign next_accumulator = 
@@ -50,9 +48,8 @@ module denselayer #(
                ($signed(b_memory[0]) <<< 8);
 
     wire signed [DATA_WIDTH-1:0] act_in;
-    assign act_in = next_accumulator[31:16]; //middle q8.8 used
+    assign act_in = next_accumulator[31:16];
 
-    // Final Sigmoid Logic
     wire signed [DATA_WIDTH-1:0] final_soc;
     wire signed [DATA_WIDTH-1:0] sig_approx;
     
@@ -77,14 +74,16 @@ module denselayer #(
                 0: begin //IDLE
                     if (start_calc) 
                     begin
+                        // This prints the exact data the LSTM passed to the Dense Layer!
                         $display("DENSE MATH CHECK: LSTM_Neuron_0=%h | act_in=%h | final_soc=%h", x_in[15:0], act_in, final_soc);
                         y_out <= final_soc; 
                         calc_done <= 1'b1;  
-                        state     <= 1;       
+                        // Because math is combinational now, we can finish in 1 clock cycle! No WAIT state needed.
+                        state     <= 1;     
 
                     end
                 end
-                 1: begin 
+                 1: begin // DONE - sit here 1 cycle so calc_done clears, then go idle
         state <= 0;  
         end
             endcase

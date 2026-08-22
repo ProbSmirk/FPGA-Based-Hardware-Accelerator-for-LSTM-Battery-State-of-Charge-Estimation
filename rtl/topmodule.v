@@ -1,28 +1,28 @@
+`timescale 1ns / 1ps
 
 
 module topmodule #(
     parameter DATA_WIDTH = 16,
 
-    // Replace 32'h00000000 with actual Q16.16 hex values printed by the script
-    parameter signed [31:0] MM_SCALE_V   = 32'h00001CF2,
+    parameter signed [31:0] MM_SCALE_V   = 32'h00003FF4,
     parameter signed [31:0] MM_SCALE_I   = 32'h00003333,
     parameter signed [31:0] MM_SCALE_T   = 32'h00000124,
     parameter signed [31:0] MM_SCALE_AH  = 32'h00000025,
-    parameter signed [31:0] MM_OFFSET_V  = 32'h000000C8,
+    parameter signed [31:0] MM_OFFSET_V  = 32'hFFFECC23,
     parameter signed [31:0] MM_OFFSET_I  = 32'h00000000,
     parameter signed [31:0] MM_OFFSET_T  = 32'h0000846F,
     parameter signed [31:0] MM_OFFSET_AH = 32'h00000000,
 
-    parameter signed [31:0] BN_SCALE_V   = 32'h00073AA6,  // default = 1.0
-    parameter signed [31:0] BN_SCALE_I   = 32'h0002D577,
-    parameter signed [31:0] BN_SCALE_T   = 32'h00147F2C,
-    parameter signed [31:0] BN_SCALE_AH  = 32'h0004D26D,
-    parameter signed [31:0] BN_OFFSET_V  = 32'hFFFB5B83,  // default = 0.0
-    parameter signed [31:0] BN_OFFSET_I  = 32'hFFFEFB22,
-    parameter signed [31:0] BN_OFFSET_T  = 32'hFFF1F2A7,
-    parameter signed [31:0] BN_OFFSET_AH = 32'hFFFEDB57,
+    parameter signed [31:0] BN_SCALE_V   = 32'h00050396,  
+    parameter signed [31:0] BN_SCALE_I   = 32'h0002C0B3,
+    parameter signed [31:0] BN_SCALE_T   = 32'h001073F6,
+    parameter signed [31:0] BN_SCALE_AH  = 32'h00047763,
+    parameter signed [31:0] BN_OFFSET_V  = 32'hFFFEFACD,  
+    parameter signed [31:0] BN_OFFSET_I  = 32'hFFFF2D4B,
+    parameter signed [31:0] BN_OFFSET_T  = 32'hFFF4B9FA,
+    parameter signed [31:0] BN_OFFSET_AH = 32'hFFFEEB60,
 
-    // Set to match your ADC polling rate
+    
     parameter integer SAMPLE_PERIOD_S = 10
 )(
     input  wire clk,
@@ -38,14 +38,13 @@ module topmodule #(
     output wire                  soc_valid
 );
 
-    //clock divider
     reg [1:0] div_cnt    = 0;
     reg       slow_clk_r = 0;
     wire      slow_clk;
 
     always @(posedge clk) begin
         div_cnt <= div_cnt + 1;
-        if (div_cnt == 2'b11) begin   // toggle every 4 cycles
+        if (div_cnt == 2'b11) begin   // toggle every 4 cycles → ÷4 = 25MHz
             slow_clk_r <= ~slow_clk_r;
             div_cnt    <= 0;
         end
@@ -53,7 +52,6 @@ module topmodule #(
 
     BUFG clk_buf (.I(slow_clk_r), .O(slow_clk));
 
-    //  SPI controller â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     wire [DATA_WIDTH-1:0] v_raw_adc, i_raw_adc, t_raw_adc;
     wire                  sensor_valid_spi;
 
@@ -72,6 +70,7 @@ module topmodule #(
         .sensor_valid(sensor_valid_spi)
     );
 
+    // ── Coulomb counter ───────────────────────────────────────────────────────
     wire signed [DATA_WIDTH-1:0] ah_raw;
 
     coulomb_counter #(
@@ -85,6 +84,7 @@ module topmodule #(
         .ah_out      (ah_raw)
     );
 
+    // ── MinMaxScaler ─────────────────────────────────────────────────────────
     wire signed [DATA_WIDTH-1:0] v_mm, i_mm, t_mm, ah_mm;
     wire                         mm_valid;
 
@@ -141,6 +141,7 @@ module topmodule #(
         .valid_out(bn_valid)
     );
 
+    // ── LSTM accelerator ─────────────────────────────────────────────────────
     lstmtop #(
         .DATA_WIDTH (DATA_WIDTH),
         .NUM_NEURONS(16),

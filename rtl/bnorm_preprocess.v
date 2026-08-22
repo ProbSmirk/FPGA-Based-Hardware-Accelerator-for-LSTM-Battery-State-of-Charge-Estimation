@@ -2,16 +2,16 @@
 
 
 module bnorm_preprocess #(
+   
+    parameter signed [31:0] BN_SCALE_V  = 32'h00050396,  // replace with bn_scale[0]
+    parameter signed [31:0] BN_SCALE_I  = 32'h0002C0B3,  // replace with bn_scale[1]
+    parameter signed [31:0] BN_SCALE_T  = 32'h001073F6,  // replace with bn_scale[2]
+    parameter signed [31:0] BN_SCALE_AH = 32'h00047763,  // replace with bn_scale[3]
 
-    parameter signed [31:0] BN_SCALE_V  = 32'h00010000,  // replace with bn_scale[0]
-    parameter signed [31:0] BN_SCALE_I  = 32'h00010000,  // replace with bn_scale[1]
-    parameter signed [31:0] BN_SCALE_T  = 32'h00010000,  // replace with bn_scale[2]
-    parameter signed [31:0] BN_SCALE_AH = 32'h00010000,  // replace with bn_scale[3]
-
-    parameter signed [31:0] BN_OFFSET_V  = 32'h00000000, // replace with bn_offset[0]
-    parameter signed [31:0] BN_OFFSET_I  = 32'h00000000, // replace with bn_offset[1]
-    parameter signed [31:0] BN_OFFSET_T  = 32'h00000000, // replace with bn_offset[2]
-    parameter signed [31:0] BN_OFFSET_AH = 32'h00000000, // replace with bn_offset[3]
+    parameter signed [31:0] BN_OFFSET_V  = 32'hFFFEFACD, // replace with bn_offset[0]
+    parameter signed [31:0] BN_OFFSET_I  = 32'hFFFF2D4B, // replace with bn_offset[1]
+    parameter signed [31:0] BN_OFFSET_T  = 32'hFFF4B9FA, // replace with bn_offset[2]
+    parameter signed [31:0] BN_OFFSET_AH = 32'hFFFEEB60, // replace with bn_offset[3]
 
     parameter DATA_WIDTH = 16
 )(
@@ -19,11 +19,13 @@ module bnorm_preprocess #(
     input  wire rst,
     input  wire valid_in,
 
+    // MinMaxScaler outputs — Q8.8, range [0, 1]
     input  wire signed [DATA_WIDTH-1:0] v_in,
     input  wire signed [DATA_WIDTH-1:0] i_in,
     input  wire signed [DATA_WIDTH-1:0] t_in,
     input  wire signed [DATA_WIDTH-1:0] ah_in,
 
+    // BatchNorm outputs — Q8.8, centred ~0
     output reg  signed [DATA_WIDTH-1:0] v_out,
     output reg  signed [DATA_WIDTH-1:0] i_out,
     output reg  signed [DATA_WIDTH-1:0] t_out,
@@ -31,8 +33,6 @@ module bnorm_preprocess #(
     output reg  valid_out
 );
 
-    // Same arithmetic as minmax_preprocess but NO clamping
-    // (BatchNorm output can be negative and > 1)
     function automatic signed [15:0] bn_apply;
         input signed [15:0] x;
         input signed [31:0] scale;
