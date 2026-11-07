@@ -34,10 +34,6 @@ The hardware architecture is designed as a sequential datapath that operates ent
 *   **Used where:** Clock divider output in `topmodule.v`
 *   **Purpose:** Low-skew distribution of the divided 25MHz slow_clk across the design.
 
-**5. SPI / GPIO pins**
-*   **Used where:** `spicontrol.v` (`sdin`/`cs_n`/`sclk`), reset button, status LEDs
-*   **Purpose:** External ADC interface and board I/O.
-
 ## Phases Left
 1. VIO Testing
 2. Physical implementation on the ZedBoard via external ADC inputs
